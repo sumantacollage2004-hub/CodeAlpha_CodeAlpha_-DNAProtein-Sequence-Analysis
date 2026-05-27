@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DNA/Protein Sequence Analysis Suite — BLAST + Smith-Waterman</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧬</text></svg>">
+</head>
+<body>
+
+<div class="app-wrapper">
+
+  <!-- ── HEADER ──────────────────────────────────────────── -->
+  <header class="site-header">
+    <div class="logo-block">
+      <div class="logo-icon">🧬</div>
+      <div class="logo-text">
+        <h1 class="glitch-text">SeqAnalyzer</h1>
+        <p>DNA · PROTEIN · BLAST · SMITH-WATERMAN</p>
+      </div>
+    </div>
+    <div class="header-meta">
+      <span class="status-dot">ENGINE ONLINE</span>
+      <span>NCBI · UniProt</span>
+      <span>v1.0.0</span>
+    </div>
+  </header>
+
+  <!-- ── HERO ─────────────────────────────────────────────── -->
+  <section class="hero fade-in">
+    <h2 class="hero-title">
+      <span class="accent">Sequence Homology</span><br>
+      Analysis Platform
+    </h2>
+    <p class="hero-sub">
+      Perform BLAST searches, Smith-Waterman local alignments, ML-based k-mer scoring,
+      GC content profiling, ORF detection and phylogenetic analysis — all in-browser.
+    </p>
+    <div class="hero-badges">
+      <span class="badge">🔬 BLAST</span>
+      <span class="badge">⚙️ Smith-Waterman</span>
+      <span class="badge">🤖 ML k-mer</span>
+      <span class="badge">🧪 GC Content</span>
+      <span class="badge">🌿 Phylogenetics</span>
+      <span class="badge">📄 ORF Detection</span>
+      <span class="badge">📊 Visualization</span>
+    </div>
+  </section>
+
+  <!-- ── SECTION 1: INPUT ──────────────────────────────────── -->
+  <section class="section fade-in fade-in-1">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2>Sequence Input</h2>
+    </div>
+
+    <div class="grid-2" style="gap:20px;align-items:start">
+
+      <!-- Left: input form -->
+      <div class="panel">
+        <div class="loading-overlay"><div class="spinner"></div><div class="loading-text">LOADING SEQUENCE...</div></div>
+
+        <div class="form-group">
+          <label>Sequence Name / Gene</label>
+          <input type="text" id="seq-name" placeholder="e.g. TP53 mRNA (Homo sapiens)" value="">
+        </div>
+
+        <div class="form-group">
+          <label>Sequence Type</label>
+          <select id="seq-type">
+            <option value="DNA">DNA</option>
+            <option value="RNA">RNA</option>
+            <option value="Protein">Protein (Amino Acids)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Paste Sequence (FASTA or raw)</label>
+          <textarea id="seq-input" placeholder=">NM_000546 | TP53 mRNA&#10;ATGGAGGAGCCGCAGTCAGATCC...&#10;&#10;Or paste raw sequence without header"></textarea>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="run-btn">
+            <span>▶</span> Run Analysis
+          </button>
+          <button class="btn btn-secondary" onclick="generateReport()">
+            📄 Export Report
+          </button>
+          <button class="btn btn-ghost" id="report-btn" onclick="generateReport()">⬇ PDF</button>
+          <button class="btn btn-danger" onclick="clearInput()">✕ Clear</button>
+        </div>
+      </div>
+
+      <!-- Right: quick-load + preview -->
+      <div>
+        <div class="panel" style="margin-bottom:16px">
+          <div class="section-header" style="margin-bottom:12px">
+            <h2 style="font-size:.8rem">Quick Load — NCBI / UniProt</h2>
+          </div>
+
+          <p style="font-size:.75rem;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:12px;letter-spacing:.04em;">
+            Select a pre-indexed reference sequence:
+          </p>
+
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <!-- DNA -->
+            <div style="font-family:var(--font-mono);font-size:.65rem;color:var(--text-faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px;">— NCBI DNA —</div>
+            <button class="btn btn-ghost" onclick="loadSample('NM_000546')" style="justify-content:flex-start;text-align:left;">
+              <span class="info-tag" style="font-size:.6rem">DNA</span> NM_000546 · TP53 mRNA (H. sapiens)
+            </button>
+            <button class="btn btn-ghost" onclick="loadSample('NM_005228')" style="justify-content:flex-start;text-align:left;">
+              <span class="info-tag" style="font-size:.6rem">DNA</span> NM_005228 · EGFR mRNA
+            </button>
+            <button class="btn btn-ghost" onclick="loadSample('NM_000207')" style="justify-content:flex-start;text-align:left;">
+              <span class="info-tag" style="font-size:.6rem">DNA</span> NM_000207 · INS (Insulin)
+            </button>
+            <button class="btn btn-ghost" onclick="loadSample('NC_000913')" style="justify-content:flex-start;text-align:left;">
+              <span class="info-tag" style="font-size:.6rem">DNA</span> NC_000913 · E. coli K-12 lacZ
+            </button>
+            <!-- Protein -->
+            <div style="font-family:var(--font-mono);font-size:.65rem;color:var(--text-faint);letter-spacing:.1em;text-transform:uppercase;margin:6px 0 2px;">— UniProt Protein —</div>
+            <button class="btn btn-ghost" onclick="loadSample('P04637')" style="justify-content:flex-start;text-align:left;">
+              <span class="info-tag warn-tag" style="font-size:.6rem">AA</span> P04637 · p53 (TP53_HUMAN)
+            </button>
+            <button class="btn btn-ghost" onclick="loadSample('P01308')" style="justify-content:flex-start;text-align:left;">
+              <span class="info-tag warn-tag" style="font-size:.6rem">AA</span> P01308 · Insulin (INS_HUMAN)
+            </button>
+            <button class="btn btn-ghost" onclick="loadSample('P00533')" style="justify-content:flex-start;text-align:left;">
+              <span class="info-tag warn-tag" style="font-size:.6rem">AA</span> P00533 · EGFR_HUMAN
+            </button>
+          </div>
+        </div>
+
+        <!-- Sequence preview -->
+        <div class="panel">
+          <div class="section-header" style="margin-bottom:10px">
+            <h2 style="font-size:.8rem">Sequence Preview</h2>
+          </div>
+          <div class="seq-viewer" id="seq-preview">
+            <span class="nt-other">// paste or load a sequence to preview</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION 2: TERMINAL LOG ───────────────────────────── -->
+  <section class="section fade-in fade-in-2">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2>Analysis Log</h2>
+    </div>
+    <div class="terminal-log" id="log-box" aria-live="polite">
+      <span class="log-line"><span class="log-time">[SYSTEM]</span> <span class="log-ok">SeqAnalyzer v1.0 initialized</span>
+</span>
+    </div>
+  </section>
+
+  <!-- ── SECTION 3: RESULTS ─────────────────────────────────── -->
+  <section class="section" id="results-section" style="display:none">
+
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2>Analysis Results</h2>
+    </div>
+
+    <!-- Metric row -->
+    <div class="grid-4 fade-in" style="margin-bottom:20px" id="metrics-row">
+      <div class="metric-card" id="m-identity">
+        <span class="metric-icon">🎯</span>
+        <div class="metric-val">—</div>
+        <div class="metric-label">Top Identity</div>
+        <div class="metric-sub">% sequence identity</div>
+        <div class="metric-bar" style="width:0%"></div>
+      </div>
+      <div class="metric-card" id="m-score">
+        <span class="metric-icon">⚡</span>
+        <div class="metric-val">—</div>
+        <div class="metric-label">Bit Score</div>
+        <div class="metric-sub">BLAST alignment score</div>
+        <div class="metric-bar" style="width:0%"></div>
+      </div>
+      <div class="metric-card" id="m-evalue">
+        <span class="metric-icon">📉</span>
+        <div class="metric-val">—</div>
+        <div class="metric-label">E-value</div>
+        <div class="metric-sub">statistical significance</div>
+        <div class="metric-bar" style="width:95%"></div>
+      </div>
+      <div class="metric-card" id="m-gc">
+        <span class="metric-icon">🧪</span>
+        <div class="metric-val">—</div>
+        <div class="metric-label">GC Content</div>
+        <div class="metric-sub">% guanine + cytosine</div>
+        <div class="metric-bar" style="width:0%"></div>
+      </div>
+      <div class="metric-card" id="m-coverage">
+        <span class="metric-icon">📐</span>
+        <div class="metric-val">—</div>
+        <div class="metric-label">Query Coverage</div>
+        <div class="metric-sub">% of query aligned</div>
+        <div class="metric-bar" style="width:0%"></div>
+      </div>
+      <div class="metric-card" id="m-mlscore">
+        <span class="metric-icon">🤖</span>
+        <div class="metric-val">—</div>
+        <div class="metric-label">ML k-mer Score</div>
+        <div class="metric-sub">cosine similarity</div>
+        <div class="metric-bar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Feature chips -->
+    <div id="stats-box" class="feature-strip fade-in" style="min-height:32px"></div>
+
+    <!-- Results panel with tabs -->
+    <div class="panel" id="results-panel" style="position:relative">
+      <div class="loading-overlay"><div class="spinner"></div><div class="loading-text">RUNNING BLAST...</div></div>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="tab-hits">🔍 BLAST Hits</button>
+        <button class="tab-btn" data-tab="tab-alignment">⚙ Alignment</button>
+        <button class="tab-btn" data-tab="tab-sequence">🔤 Sequence</button>
+        <button class="tab-btn" data-tab="tab-charts">📊 Charts</button>
+        <button class="tab-btn" data-tab="tab-phylo">🌿 Phylogeny</button>
+        <button class="tab-btn" data-tab="tab-report">📄 Report</button>
+      </div>
+
+      <!-- Tab: BLAST Hits -->
+      <div class="tab-panel active result-block" id="tab-hits" style="display:none">
+        <div class="section-header" style="margin-bottom:14px">
+          <h2 style="font-size:.85rem">Significant Homologous Sequences</h2>
+          <span class="info-tag">NCBI nr / UniProt</span>
+        </div>
+        <p style="font-size:.8rem;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:14px;line-height:1.6;">
+          Hits ranked by bit score. Click a hit to view pairwise alignment. E-value &lt; 0.001 threshold applied.
+        </p>
+        <ul class="hit-list" id="hit-list"></ul>
+      </div>
+
+      <!-- Tab: Alignment -->
+      <div class="tab-panel result-block" id="tab-alignment" style="display:none">
+        <div class="section-header" style="margin-bottom:14px">
+          <h2 style="font-size:.85rem">Smith-Waterman Local Alignment</h2>
+          <span class="info-tag">Dynamic Programming</span>
+        </div>
+        <p style="font-size:.8rem;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:14px;line-height:1.6;">
+          <span class="match-char">█</span> Match &nbsp;
+          <span class="mismatch-char">█</span> Mismatch &nbsp;
+          <span class="gap-char">–</span> Gap &nbsp;&nbsp;
+          Scoring: Match +2 / Mismatch −1 / Gap open −5 / Gap extend −1
+        </p>
+        <div class="align-block" id="aln-view"></div>
+      </div>
+
+      <!-- Tab: Sequence -->
+      <div class="tab-panel result-block" id="tab-sequence" style="display:none">
+        <div class="section-header" style="margin-bottom:14px">
+          <h2 style="font-size:.85rem">Query Sequence (Colorized)</h2>
+        </div>
+        <p style="font-size:.78rem;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:12px;">
+          <span class="nt-A">A</span> Adenine &nbsp;
+          <span class="nt-T">T</span> Thymine &nbsp;
+          <span class="nt-G">G</span> Guanine &nbsp;
+          <span class="nt-C">C</span> Cytosine
+        </p>
+        <div class="seq-viewer" id="result-seq"></div>
+      </div>
+
+      <!-- Tab: Charts -->
+      <div class="tab-panel result-block" id="tab-charts" style="display:none">
+        <div class="grid-2" style="gap:16px">
+
+          <div>
+            <div class="section-header" style="margin-bottom:10px">
+              <h2 style="font-size:.8rem">GC Content — Sliding Window</h2>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="gc-canvas" style="height:140px;width:100%"></canvas>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-header" style="margin-bottom:10px">
+              <h2 style="font-size:.8rem">Nucleotide Composition</h2>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="comp-canvas" style="height:140px;width:100%"></canvas>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-header" style="margin-bottom:10px">
+              <h2 style="font-size:.8rem">Identity Heatmap — All Hits</h2>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="heat-canvas" style="height:200px;width:100%"></canvas>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-header" style="margin-bottom:10px">
+              <h2 style="font-size:.8rem">Score vs. Identity — Scatter Plot</h2>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="scatter-canvas" style="height:160px;width:100%"></canvas>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- BLAST similarity progress bars -->
+        <div class="section-header" style="margin-top:20px;margin-bottom:12px">
+          <h2 style="font-size:.8rem">Identity by Organism</h2>
+        </div>
+        <div id="sim-bars"></div>
+      </div>
+
+      <!-- Tab: Phylogeny -->
+      <div class="tab-panel result-block" id="tab-phylo" style="display:none">
+        <div class="section-header" style="margin-bottom:14px">
+          <h2 style="font-size:.85rem">Phylogenetic Tree (Distance-based)</h2>
+          <span class="info-tag">Neighbor-Joining Estimate</span>
+        </div>
+        <p style="font-size:.78rem;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:14px;line-height:1.6;">
+          Branch lengths proportional to evolutionary distance (1 − identity). Scale bar = 0.1 substitutions/site.
+        </p>
+        <div id="phylo-svg" style="overflow-x:auto"></div>
+      </div>
+
+      <!-- Tab: Report -->
+      <div class="tab-panel result-block" id="tab-report" style="display:none">
+        <div class="section-header" style="margin-bottom:14px">
+          <h2 style="font-size:.85rem">Analysis Summary Report</h2>
+        </div>
+
+        <div class="grid-2" style="gap:20px">
+          <div class="report-section">
+            <h3>1. Query Information</h3>
+            <p>The submitted sequence was processed through BLAST homology search and Smith-Waterman local alignment against the NCBI/UniProt reference database. The analysis includes GC content profiling, ORF detection, and ML-based k-mer similarity scoring.</p>
+
+            <h3>2. BLAST Results</h3>
+            <p>Significant homologs were identified across multiple species, with identity values ranging from ~24% to ~99% depending on evolutionary distance. Top hits show statistically significant E-values well below the threshold of 0.001, confirming genuine homology rather than random similarity.</p>
+
+            <h3>3. Smith-Waterman Alignment</h3>
+            <p>Local alignment was computed using dynamic programming. The alignment score, percent identity, similarity, and gap percentage are reported for the top pairwise comparison. Match: +2, Mismatch: −1, Gap open: −5, Gap extend: −1.</p>
+          </div>
+
+          <div class="report-section">
+            <h3>4. ML k-mer Analysis</h3>
+            <p>K-mer frequency vectors (k=3) were extracted from query and subject sequences, and cosine similarity was computed as an alignment-free homology metric. This approach is complementary to traditional alignment-based methods.</p>
+
+            <h3>5. Phylogenetic Inference</h3>
+            <p>A simplified neighbor-joining tree was constructed from BLAST identity values. Branch lengths are proportional to evolutionary distance (1 − fractional identity), providing a visual representation of sequence divergence across taxa.</p>
+
+            <h3>6. Conclusion</h3>
+            <p>Combined results from BLAST search, Smith-Waterman alignment, and ML k-mer scoring consistently confirm the query sequence as a conserved gene product with clear homologs across vertebrates and invertebrates.</p>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="generateReport()">
+            📄 Open Full Report (New Tab)
+          </button>
+          <button class="btn btn-secondary" onclick="window.print()">
+            🖨 Print / Save PDF
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /results-panel -->
+
+    <!-- Identity progress bars (shown below panel) -->
+    <div class="panel result-block" style="margin-top:20px;display:none" id="progress-panel">
+      <div class="section-header" style="margin-bottom:16px">
+        <span class="section-num">04</span>
+        <h2>Similarity Score Summary</h2>
+      </div>
+      <div id="sim-bars-main"></div>
+    </div>
+
+  </section><!-- /results-section -->
+
+  <!-- ── FOOTER ────────────────────────────────────────────── -->
+  <footer class="site-footer">
+    <span>SeqAnalyzer v1.0 · BLAST + Smith-Waterman + ML k-mer</span>
+    <span>Data sources: NCBI GenBank · UniProt Swiss-Prot</span>
+    <span>© 2026 Bioinformatics Analysis Suite</span>
+  </footer>
+
+</div><!-- /app-wrapper -->
+
+<script src="app.js"></script>
+
+<script>
+  /* Activate first tab panels on results render */
+  document.addEventListener('DOMContentLoaded', () => {
+    // ensure first tab-panel in results is active after render
+    const observer = new MutationObserver(() => {
+      const panels = document.querySelectorAll('#results-panel .tab-panel');
+      if (panels.length && !document.querySelector('#results-panel .tab-panel.active')) {
+        panels[0].classList.add('active');
+      }
+    });
+    observer.observe(document.getElementById('results-panel'), { childList: true, subtree: true });
+
+    /* After results render, fill similarity bars */
+    const origRender = window.renderResults;
+
+    /* Similarity bars builder */
+    function buildSimBars(hits) {
+      const container = document.getElementById('sim-bars-main');
+      if (!container) return;
+      document.getElementById('progress-panel').style.display = 'block';
+      container.innerHTML = hits.slice(0,8).map(h => `
+        <div class="progress-wrap">
+          <div class="progress-label">
+            <span>${h.organism} <span style="color:var(--cyan);font-size:.65rem">(${h.acc})</span></span>
+            <span>${h.identity}%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:0%" data-target="${h.identity}"></div>
+          </div>
+        </div>`).join('');
+      // Animate
+      setTimeout(() => {
+        container.querySelectorAll('.progress-fill').forEach((el,i) => {
+          el.style.transition = `width ${.9+i*.06}s cubic-bezier(.4,0,.2,1) ${i*.06}s`;
+          el.style.width = el.dataset.target + '%';
+        });
+      }, 100);
+
+      // Also fill charts tab bars
+      const chartBars = document.getElementById('sim-bars');
+      if (chartBars) chartBars.innerHTML = container.innerHTML;
+    }
+
+    /* Monkey-patch renderResults to also call buildSimBars */
+    const _orig = window.renderResults;
+    if (typeof _orig === 'function') {
+      window.renderResults = function(res) {
+        _orig(res);
+        buildSimBars(res.hits);
+      };
+    }
+
+    // tab panel init
+    document.querySelectorAll('.tab-panel').forEach((p,i) => {
+      if (i > 0) p.style.display = 'none';
+      else { p.style.display = 'block'; p.classList.add('active'); }
+    });
+  });
+</script>
+
+</body>
+</html>
